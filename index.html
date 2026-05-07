@@ -4,67 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cycle timer</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;color:#1c1c1a;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem}
-.wrap{width:100%;max-width:460px}
-.card{background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:16px;padding:1.5rem;margin-bottom:12px}
-.section-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
-.time-inputs{display:flex;gap:8px;align-items:center}
-.time-inputs input{flex:1;text-align:center;font-size:18px;font-weight:500;padding:6px 4px;border:1px solid #d4d4d0;border-radius:8px;background:#fff;color:#1c1c1a;outline:none}
-.time-inputs input:focus{box-shadow:0 0 0 2px rgba(20,184,166,.35);border-color:#14b8a6}
-.time-sep{font-size:20px;font-weight:500;color:#888;line-height:1}
-.bm-row{display:flex;gap:8px;align-items:center;margin-top:8px}
-.bm-row select{flex:1;font-size:13px;padding:6px 8px;border:1px solid #d4d4d0;border-radius:8px;background:#fff;color:#1c1c1a;outline:none}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 14px;border:1px solid #d4d4d0;border-radius:8px;background:#fff;color:#1c1c1a;font-size:13px;cursor:pointer;transition:background .15s,transform .1s}
-.btn:hover{background:#f5f5f4}
-.btn:active{transform:scale(.97)}
-.btn-sm{padding:6px 8px;font-size:13px}
-.btn-del{color:#dc2626;border-color:transparent;background:transparent;font-size:16px;width:28px;height:28px;padding:0;border-radius:6px}
-.btn-del:hover{background:#fee2e2}
-#ring-area{display:flex;flex-direction:column;align-items:center;padding:1rem 0}
-#ring-arc {
-  transform: scaleX(-1) translateX(-100%);
-}
-#ring-area.idle #ring-arc {
-  stroke: #E5E5E5;
-}
-#ring-area.running #ring-arc {
-  stroke: #14b8a6;
-}
-#ring-area.paused #ring-arc {
-  stroke: #f59e0b;
-}
-.controls{display:flex;gap:16px;justify-content:center;margin-top:1.25rem}
-.ctrl-btn{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:50%;border:1px solid #d4d4d0;background:#fff;color:#666;cursor:pointer;transition:background .15s,transform .1s}
-.ctrl-btn:hover{background:#f5f5f4;color:#1c1c1a}
-.ctrl-btn:active{transform:scale(.96)}
-.ctrl-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
-.ctrl-btn-start{background:#0f766e;color:#ccfbf1;border-color:#0f766e}
-.ctrl-btn-start:hover{background:#115e59;color:#ccfbf1}
-.bm-hint{font-size:11px;color:#aaa;margin-top:5px;min-height:16px}
-h1{font-size:18px;font-weight:500;margin-bottom:1rem;color:#1c1c1a}
-</style>
+<link rel="stylesheet" href="./style.css">
 </head>
 <body>
 <div class="wrap">
   <div class="card">
-    <div class="section-label">Интервал</div>
     <div class="time-inputs">
-      <input type="number" id="inp-h" min="0" max="99" value="0" placeholder="чч">
+      <input type="number" id="inp-h" min="0" max="99" value="0" placeholder="HH">
       <span class="time-sep">:</span>
-      <input type="number" id="inp-m" min="0" max="59" value="0" placeholder="мм">
+      <input type="number" id="inp-m" min="0" max="59" value="0" placeholder="MM">
       <span class="time-sep">:</span>
-      <input type="number" id="inp-s" min="0" max="59" value="30" placeholder="сс">
-    </div>
-    <div class="bm-row">
-      <select id="bm-select"><option value="">— закладки —</option></select>
+      <input type="number" id="inp-s" min="0" max="59" value="30" placeholder="SS">
       <button class="btn btn-sm" id="bm-save">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10a1 1 0 0 1 1 1v11l-6-3-6 3V3a1 1 0 0 1 1-1z"/></svg>
       </button>
-      <button class="btn btn-sm btn-del" id="bm-del" title="Удалить закладку">✕</button>
     </div>
-    <div class="bm-hint" id="bm-hint"></div>
   </div>
 
   <div class="card">
@@ -101,6 +55,13 @@ h1{font-size:18px;font-weight:500;margin-bottom:1rem;color:#1c1c1a}
       </button>
     </div>
   </div>
+  <div class="card">
+    <div class="bm-row">
+      <select id="bm-select"><option value="">— закладки —</option></select>
+      <button class="btn btn-sm btn-del" id="bm-del" title="Удалить закладку">✕</button>
+    </div>
+    <div class="bm-hint" id="bm-hint"></div>
+  </div>
 </div>
 
 <script>
@@ -113,7 +74,7 @@ function arcPath(deg){
   return`M ${CX} ${CY-R} A ${R} ${R} 0 ${deg>180?1:0} 1 ${ex} ${ey}`;
 }
 
-let totalSec=30,remSec=30,cycle=1,running=false,paused=false,timer=null,lastTick=null;
+let totalSec=30,remSec=30,totalMs=30_000,remMs=30_000,cycle=1,running=false,paused=false,timer=null,lastTick=null;
 let bookmarks=[];
 const STORAGE_KEY='cyclic-timer-bookmarks';
 
@@ -130,10 +91,10 @@ function fmtTime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60
 function getInput(){return(+inpH.value||0)*3600+(+inpM.value||0)*60+(+inpS.value||0)}
 function setInputFromSec(sec){inpH.value=Math.floor(sec/3600);inpM.value=Math.floor((sec%3600)/60);inpS.value=sec%60}
 
-function updateRing(sec,total){
-  const pct=total>0?sec/total:1;
+function updateRing(ms,total){
+  const pct=total>0?ms/total:1;
   arcEl.setAttribute('d',arcPath(pct*360));
-  ringTxt.textContent=fmtTime(sec);
+  ringTxt.textContent=fmtTime(Math.ceil(ms/1000));
 }
 function setStatus(state){
   ringArea.className=state;
@@ -199,25 +160,25 @@ function beep(){
 
 function tick(){
   const now=Date.now();
-  const delta=Math.round((now-lastTick)/1000);
-  if(delta<1)return;
-  lastTick=now-(now-lastTick-delta*1000);
-  remSec=Math.max(0,remSec-delta);
-  updateRing(remSec,totalSec);
-  if(remSec<=0){
+  const delta=now-lastTick;
+  lastTick=now;
+  remMs-=delta;
+  remSec=Math.max(0,Math.ceil(remMs/1000));
+  updateRing(remMs,totalMs);
+  if(remMs<=0){
     incCycle();
-    beep();remSec=totalSec;
-    updateRing(remSec,totalSec);
+    beep();remSec=totalSec;remMs=totalMs;
+    updateRing(remMs,totalMs);
   }
 }
 
 function start(){
   const t=getInput();if(t<=0){inpS.focus();return}
-  if(!paused){totalSec=t;remSec=t;intDisp.textContent=fmtTime(t)}
+  if(!paused){totalSec=t;remSec=totalSec;totalMs=t*1000;remMs=totalMs;intDisp.textContent=fmtTime(t)}
   running=true;paused=false;
   lastTick=Date.now();
-  timer=setInterval(tick,100);
-  updateRing(remSec,totalSec);
+  timer=setInterval(tick,20);
+  updateRing(remMs,totalMs);
   setStatus('running');
   btnStart.disabled=true;btnPause.disabled=false;
   [inpH,inpM,inpS].forEach(i=>i.disabled=true);
@@ -231,8 +192,10 @@ function pause(){
 function reset(){
   running=false;paused=false;clearInterval(timer);
   setCycle(1);
-  const t=getInput();totalSec=t;remSec=t;
-  updateRing(t,t);
+  const t=getInput();
+  totalSec=t;remSec=t;
+  totalMs=t*1000;remMs=totalMs;
+  updateRing(remMs,totalMs);
   intDisp.textContent='—';setStatus('idle');
   btnStart.disabled=false;btnPause.disabled=true;
   [inpH,inpM,inpS].forEach(i=>i.disabled=false);
@@ -243,19 +206,19 @@ bmDel.addEventListener('click',deleteBookmark);
 bmSel.addEventListener('change',()=>{
   const v=+bmSel.value;if(!v)return;
   setInputFromSec(v);
-  if(!running&&!paused){remSec=v;totalSec=v;updateRing(v,v);}
+  if(!running&&!paused){remSec=v;totalSec=v;totalMs=v*1000;remMs=totalMs;updateRing(remMs,totalMs);}
 });
 btnStart.addEventListener('click',start);
 btnPause.addEventListener('click',pause);
 btnReset.addEventListener('click',reset);
 [inpH,inpM,inpS].forEach(inp=>{
   inp.addEventListener('change',()=>{
-    if(!running&&!paused){const t=getInput();remSec=t;totalSec=t;updateRing(t,t);}
+    if(!running&&!paused){const t=getInput();remSec=t;totalSec=t;totalMs=t*1000;remMs=totalMs;updateRing(remMs,totalMs);}
   });
 });
 
 function init() {
-  updateRing(30,30);
+  updateRing(remMs,totalMs);
   loadBookmarks();
   setCycle(1);
 }
