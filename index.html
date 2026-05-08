@@ -9,19 +9,6 @@
 <body>
 <div class="wrap">
   <div class="card">
-    <div class="time-inputs">
-      <input type="number" id="inp-h" min="0" max="99" value="0" placeholder="HH">
-      <span class="time-sep">:</span>
-      <input type="number" id="inp-m" min="0" max="59" value="0" placeholder="MM">
-      <span class="time-sep">:</span>
-      <input type="number" id="inp-s" min="0" max="59" value="30" placeholder="SS">
-      <button class="btn btn-sm" id="bm-save">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10a1 1 0 0 1 1 1v11l-6-3-6 3V3a1 1 0 0 1 1-1z"/></svg>
-      </button>
-    </div>
-  </div>
-
-  <div class="card">
     <div style="text-align:center">
       <div style="color:#aaa;margin-top:4px" id="interval-display">—</div>
     </div>
@@ -53,14 +40,22 @@
           <path d="M5.5 5.5V9H9"/>
         </svg>
       </button>
+      <button class="ctrl-btn" id="bm-save">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10a1 1 0 0 1 1 1v11l-6-3-6 3V3a1 1 0 0 1 1-1z"/></svg>
+      </button>
     </div>
   </div>
   <div class="card">
-    <div class="bm-row">
-      <select id="bm-select"><option value="">— закладки —</option></select>
-      <button class="btn btn-sm btn-del" id="bm-del" title="Удалить закладку">✕</button>
+    <div class="fl-col fl-gap-2">
+      <div class="time-inputs">
+        <input type="number" id="inp-h" min="0" max="99" value="0" placeholder="HH">
+        <span class="time-sep">:</span>
+        <input type="number" id="inp-m" min="0" max="59" value="0" placeholder="MM">
+        <span class="time-sep">:</span>
+        <input type="number" id="inp-s" min="0" max="59" value="30" placeholder="SS">
+      </div>
+      <ul id="bm-list"></ul>
     </div>
-    <div class="bm-hint" id="bm-hint"></div>
   </div>
 </div>
 
@@ -79,12 +74,15 @@ let bookmarks=[];
 const STORAGE_KEY='cyclic-timer-bookmarks';
 
 const $=id=>document.getElementById(id);
+const h=t=>document.createElement(t);
+
 const inpH=$('inp-h'),inpM=$('inp-m'),inpS=$('inp-s');
 const ringArea=$('ring-area');
 const arcEl=$('ring-arc'),ringTxt=$('ring-text'),ringSub=$('ring-sub');
 const intDisp=$('interval-display');
 const btnStart=$('btn-start'),btnPause=$('btn-pause'),btnReset=$('btn-reset');
-const bmSel=$('bm-select'),bmSave=$('bm-save'),bmDel=$('bm-del'),bmHint=$('bm-hint');
+const bmSave=$('bm-save');
+const bmList=$('bm-list');
 
 function pad(n){return String(n).padStart(2,'0')}
 function fmtTime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;return h>0?`${pad(h)}:${pad(m)}:${pad(ss)}`:`${pad(m)}:${pad(ss)}`}
@@ -109,21 +107,42 @@ function incCycle() {
   setCycle(cycle+1);
 }
 
-function renderBookmarks(){
-  const cur=bmSel.value;
-  while(bmSel.options.length>1)bmSel.remove(1);
+function renderBookmarksList(){
+  let items = [];
+
   bookmarks.forEach(b=>{
-    const opt=document.createElement('option');
-    opt.value=b.sec;opt.textContent=fmtTime(b.sec);
-    bmSel.appendChild(opt);
+    const item=h('li');
+    const a=h('a');
+    a.href='#';
+    a.className='btn btn-bm';
+    a.onclick=()=>{applyBookmark(b)};
+    a.textContent=fmtTime(b.sec);
+    item.appendChild(a);
+
+    const rm=h('a');
+    rm.href='#';
+    rm.className='btn btn-sm btn-del';
+    rm.innerHTML='&times;';
+    rm.onclick=()=>{deleteBookmark(b)};
+    item.appendChild(rm);
+
+    items.push(item);
   });
-  if(bookmarks.find(b=>String(b.sec)===cur))bmSel.value=cur;
-  bmHint.textContent=bookmarks.length?`Сохранено закладок: ${bookmarks.length}`:'';
+
+  bmList.replaceChildren(...items);
+  bmList.style.display=items.length === 0 ? 'none' : '';
 }
+
+function applyBookmark(bm) {
+  const v = bm.sec;
+  setInputFromSec(v);
+  if(!running&&!paused){remSec=v;totalSec=v;totalMs=v*1000;remMs=totalMs;updateRing(remMs,totalMs);}
+}
+
 function loadBookmarks(){
   try{
     const raw=localStorage.getItem(STORAGE_KEY);
-    if(raw){bookmarks=JSON.parse(raw);renderBookmarks();}
+    if(raw){bookmarks=JSON.parse(raw);renderBookmarksList();}
   }catch(e){bookmarks=[];}
 }
 function saveBookmarks(){
@@ -133,14 +152,11 @@ function addBookmark(){
   const sec=getInput();if(sec<=0)return;
   if(bookmarks.find(b=>b.sec===sec))return;
   bookmarks.push({sec});bookmarks.sort((a,b)=>a.sec-b.sec);
-  renderBookmarks();saveBookmarks();
-  bmHint.textContent=`Закладка ${fmtTime(sec)} сохранена`;
-  setTimeout(()=>{bmHint.textContent=`Сохранено закладок: ${bookmarks.length}`},1500);
+  renderBookmarksList();saveBookmarks();
 }
-function deleteBookmark(){
-  const v=+bmSel.value;if(!v)return;
-  bookmarks=bookmarks.filter(b=>b.sec!==v);
-  renderBookmarks();saveBookmarks();
+function deleteBookmark(bm){
+  bookmarks=bookmarks.filter(b=>b!==bm);
+  renderBookmarksList();saveBookmarks();
 }
 
 function beep(){
@@ -202,12 +218,6 @@ function reset(){
 }
 
 bmSave.addEventListener('click',addBookmark);
-bmDel.addEventListener('click',deleteBookmark);
-bmSel.addEventListener('change',()=>{
-  const v=+bmSel.value;if(!v)return;
-  setInputFromSec(v);
-  if(!running&&!paused){remSec=v;totalSec=v;totalMs=v*1000;remMs=totalMs;updateRing(remMs,totalMs);}
-});
 btnStart.addEventListener('click',start);
 btnPause.addEventListener('click',pause);
 btnReset.addEventListener('click',reset);
